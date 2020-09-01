@@ -4,6 +4,18 @@ const tours = JSON.parse(
   fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`)
 );
 
+exports.checkId = (req, res, next, val) => {
+  const tour = tours.find(el => el.id === Number(val));
+  if (!tour) {
+    res.statusCode = 404;
+    res.json({
+      status: 'fail',
+      message: 'Invlaid ID'
+    });
+  }
+  next();
+};
+
 exports.getTours = (req, res) => {
   res.statusCode = 200;
   res.json({
@@ -17,14 +29,6 @@ exports.getTours = (req, res) => {
 
 exports.getTour = (req, res) => {
   const tour = tours.find(el => el.id === Number(req.params.id));
-
-  if (!tour) {
-    res.statusCode = 404;
-    res.json({
-      status: 'fail',
-      message: 'Invlaid ID'
-    });
-  }
 
   res.statusCode = 200;
   res.json({
@@ -57,7 +61,6 @@ exports.createTour = (req, res) => {
 };
 
 exports.updateTour = (req, res) => {
-  console.log(req.requestTime);
   res.statusCode = 200;
   res.json({
     status: 'sucess',
