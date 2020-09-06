@@ -10,7 +10,15 @@ exports.getTours = async (req, res) => {
       /\b(gt|gte|lt|lte)\b/g,
       match => `$${match}`
     );
-    const query = Tour.find(JSON.parse(queryStr));
+    let query = Tour.find(JSON.parse(queryStr));
+
+    if (req.query.sort) {
+      query = query.sort(req.query.sort);
+    } else {
+      // default sort
+      query = query.sort('-createdAt');
+    }
+
     const tours = await query;
 
     res.statusCode = 200;
