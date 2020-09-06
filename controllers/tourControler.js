@@ -12,11 +12,31 @@ exports.getTours = async (req, res) => {
     );
     let query = Tour.find(JSON.parse(queryStr));
 
+    // Sorting
     if (req.query.sort) {
       query = query.sort(req.query.sort);
     } else {
-      // default sort
       query = query.sort('-createdAt');
+    }
+
+    // Field limiting
+    if (req.query.fields) {
+      const fields = req.query.fields.split(',').join(' ');
+      query = query.select(fields);
+    } else {
+      query = query.select('-v');
+    }
+
+    // Pagination
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 100;
+    const skip = (page - 1) * limit;
+
+    query = query.skip(skip).limit(limit);
+
+    if (req.query.page) {
+      const numTours = await Tour.countDocuments();
+      if (skip >= numTours) throw new Error('This page does not exists');
     }
 
     const tours = await query;
