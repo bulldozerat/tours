@@ -42,6 +42,7 @@ module.exports = (err, req, res, next) => {
     if (err.name === 'CastError') {
       error = handleCastErrorDB(error);
     }
+    // TODO !!!! add errors for prod (JWT, validations DB ect)
     sendErrorProd(error, res);
   }
 };

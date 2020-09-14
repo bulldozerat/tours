@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 const AppError = require('../utils/appError');
+const catchAsync = require('../utils/catchAsync');
 
 const signToken = id => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -8,71 +9,78 @@ const signToken = id => {
   });
 };
 
-exports.signUp = async (req, res, next) => {
-  try {
-    const { name, email, password, passwordConfirm, photo } = req.body;
-    const newUser = await User.create({
-      name,
-      email,
-      password,
-      passwordConfirm,
-      photo
-    });
+exports.signUp = catchAsync(async (req, res, next) => {
+  const { name, email, password, passwordConfirm, photo } = req.body;
+  const newUser = await User.create({
+    name,
+    email,
+    password,
+    passwordConfirm,
+    photo
+  });
 
-    const token = signToken(newUser._id);
+  const token = signToken(newUser._id);
 
-    res.statusCode = 201;
-    res.json({
-      status: 'suceess',
-      token,
-      data: {
-        user: newUser
-      }
-    });
-  } catch (e) {
-    res.statusCode = 400;
-    res.json({
-      status: 'fail',
-      message: e
-    });
+  res.statusCode = 201;
+  res.json({
+    status: 'suceess',
+    token,
+    data: {
+      user: newUser
+    }
+  });
+});
+
+exports.login = catchAsync(async (req, res, next) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return next(new AppError('Please provide email and password', 400));
   }
-};
 
-exports.login = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return next(new AppError('Please provide email and password', 400));
-    }
-
-    // password is not returned because of Schema and select('+password') adds it
-    const user = await User.findOne({ email }).select('+password');
-    if (!user) {
-      return next(new AppError('Incorrect email or password', 401));
-    }
-
-    const isPasswordCorrect = await user.correctPassword(
-      password,
-      user.password
-    );
-
-    if (!isPasswordCorrect) {
-      return next(new AppError('Incorrect email or password', 401));
-    }
-
-    const token = signToken(user._id);
-
-    res.statusCode = 200;
-    res.json({
-      status: 'suceess',
-      token
-    });
-  } catch (e) {
-    res.statusCode = 400;
-    res.json({
-      status: 'fail',
-      message: e
-    });
+  // password is not returned because of Schema and select('+password') adds it
+  const user = await User.findOne({ email }).select('+password');
+  if (!user) {
+    return next(new AppError('Incorrect email or password', 401));
   }
-};
+
+  const isPasswordCorrect = await user.correctPassword(password, user.password);
+
+  if (!isPasswordCorrect) {
+    return next(new AppError('Incorrect email or password', 401));
+  }
+
+  const token = signToken(user._id);
+
+  res.statusCode = 200;
+  res.json({
+    status: 'suceess',
+    token
+  });
+});
+
+exports.protect = catchAsync(async (req, res, next) => {
+  // Get token and check if its there
+  let token;
+  const { authorization } = req.headers;
+  if (authorization && authorization.startsWith('Bearer')) {
+    token = authorization.split(' ')[1];
+  }
+
+  if (!token) {
+    return next(new AppError('You need to log in to get access', 401));
+  }
+
+  // Verify token
+  const decoded = await jwt.verify(token, process.env.JWT_SECRET);
+
+  // Check if user still exists
+  const verifiedExistingUser = await User.findById(decoded.id);
+  if (!verifiedExistingUser) {
+    return next(new AppError('The user for this token does not exist', 401));
+  }
+
+  // Check if password changed after thet token was issued
+
+  next();
+});
