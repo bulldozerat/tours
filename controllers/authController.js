@@ -81,6 +81,16 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   // Check if password changed after thet token was issued
+  const isPasswordChanged = await verifiedExistingUser.changedPasswordAfter(
+    decoded.iat
+  );
 
+  if (isPasswordChanged) {
+    return next(
+      new AppError('Recenty user changed password. Please log in again', 401)
+    );
+  }
+
+  req.user = verifiedExistingUser;
   next();
 });

@@ -17,6 +17,10 @@ const userSchema = new mongoose.Schema({
   photo: {
     type: String
   },
+  passwordChangedAt: {
+    type: Date,
+    default: Date.now()
+  },
   password: {
     type: String,
     required: [true, 'Please provide a password'],
@@ -56,6 +60,18 @@ userSchema.methods.correctPassword = async function(
 ) {
   // this.password is not available because select: false, thats why we pass it in the func
   return await bycript.compare(candidatePassword, userPassword);
+};
+
+userSchema.methods.changedPasswordAfter = async function(jwtTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(
+      this.passwordChangedAt.getTime() / 1000,
+      10
+    );
+    return jwtTimestamp < changedTimestamp;
+  }
+
+  return false;
 };
 
 const User = mongoose.model('User', userSchema);
