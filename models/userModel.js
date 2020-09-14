@@ -20,7 +20,8 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: [true, 'Please provide a password'],
-    minlength: 8
+    minlength: 8,
+    select: false
   },
   passwordConfirm: {
     type: String,
@@ -32,7 +33,8 @@ const userSchema = new mongoose.Schema({
         return el === this.password;
       }
     },
-    message: 'Passwords are not the same'
+    message: 'Passwords are not the same',
+    select: false
   }
 });
 
@@ -47,6 +49,14 @@ userSchema.pre('save', async function(next) {
 
   next();
 });
+
+userSchema.methods.correctPassword = async function(
+  candidatePassword,
+  userPassword
+) {
+  // this.password is not available because select: false, thats why we pass it in the func
+  return await bycript.compare(candidatePassword, userPassword);
+};
 
 const User = mongoose.model('User', userSchema);
 
