@@ -10,13 +10,14 @@ const signToken = id => {
 };
 
 exports.signUp = catchAsync(async (req, res, next) => {
-  const { name, email, password, passwordConfirm, photo } = req.body;
+  const { name, email, password, passwordConfirm, photo, role } = req.body;
   const newUser = await User.create({
     name,
     email,
     password,
     passwordConfirm,
-    photo
+    photo,
+    role
   });
 
   const token = signToken(newUser._id);
@@ -94,3 +95,15 @@ exports.protect = catchAsync(async (req, res, next) => {
   req.user = verifiedExistingUser;
   next();
 });
+
+exports.restrictTo = (...roles) => {
+  return (req, res, next) => {
+    // req.user.role if from protect middleware
+    if (!roles.includes(req.user.role)) {
+      return next(
+        new AppError('You do not have permission to perform this action', 403)
+      );
+    }
+    next();
+  };
+};
