@@ -11,6 +11,19 @@ const signToken = id => {
   });
 };
 
+const createSendToken = (user, statusCode, res) => {
+  const token = signToken(user._id);
+
+  res.statusCode = statusCode;
+  res.json({
+    status: 'suceess',
+    token,
+    data: {
+      user
+    }
+  });
+};
+
 exports.signUp = catchAsync(async (req, res, next) => {
   const { name, email, password, passwordConfirm, photo, role } = req.body;
   const newUser = await User.create({
@@ -22,16 +35,7 @@ exports.signUp = catchAsync(async (req, res, next) => {
     role
   });
 
-  const token = signToken(newUser._id);
-
-  res.statusCode = 201;
-  res.json({
-    status: 'suceess',
-    token,
-    data: {
-      user: newUser
-    }
-  });
+  createSendToken(newUser, 201, res);
 });
 
 exports.login = catchAsync(async (req, res, next) => {
@@ -53,13 +57,7 @@ exports.login = catchAsync(async (req, res, next) => {
     return next(new AppError('Incorrect email or password', 401));
   }
 
-  const token = signToken(user._id);
-
-  res.statusCode = 200;
-  res.json({
-    status: 'suceess',
-    token
-  });
+  createSendToken(user, 200, res);
 });
 
 exports.protect = catchAsync(async (req, res, next) => {
@@ -172,14 +170,19 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   user.passwordResetExpires = undefined;
   await user.save();
 
-  // Update changedPasswordAt property for the user
   // Log the user in, send JWT
-  const token = signToken(user._id);
+  createSendToken(user, 200, res);
+});
 
-  res.statusCode = 200;
-  res.json({
-    status: 'suceess',
-    token
-  });
-  next();
+exports.updatePassword = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.user.id).select('+password');
+  if (!(await user.correctPassword(req.body.passwordCurrent, user.password))) {
+    return next(new AppError('Your current password is wrong', 401));
+  }
+
+  user.password = req.body.passwordConfirm;
+  user.passwordConfirm = req.body.passwordConfirm;
+  await user.save();
+
+  createSendToken(user, 200, res);
 });
