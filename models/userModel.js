@@ -47,7 +47,7 @@ const userSchema = new mongoose.Schema({
     select: false
   },
   passwordResetToken: String,
-  passwordResetExprires: Date
+  passwordResetExpires: Date
 });
 
 userSchema.pre('save', async function(next) {
@@ -59,6 +59,15 @@ userSchema.pre('save', async function(next) {
   // Delete passwordConfirm cause we dont need it in DB (also not hased)
   this.passwordConfirm = undefined;
 
+  next();
+});
+
+userSchema.pre('save', async function(next) {
+  // if password is not modified or document is new dont do anything
+  if (!this.isModified('password') || this.isNew) return next();
+
+  // -1 sec to ensure the token is created before passwordChanged at is set
+  this.passwordChangedAt = Date.now() - 1000;
   next();
 });
 
@@ -83,14 +92,16 @@ userSchema.methods.changedPasswordAfter = async function(jwtTimestamp) {
 };
 
 userSchema.methods.createPasswordResetToken = function() {
-  // Add passwordResetToken and passwordResetExprires to the user obj
+  // Add passwordResetToken and passwordResetExpires to the user obj
   const resetToken = crypto.randomBytes(32).toString('hex');
   this.passwordResetToken = crypto
     .createHash('sha256')
     .update(resetToken)
     .digest('hex');
 
-  this.passwordResetExprires = Date.now() + 10 * 60 * 1000;
+  // expires in one day
+  const date = new Date();
+  this.passwordResetExpires = date.setDate(date.getDate() + 1);
 
   return resetToken;
 };
