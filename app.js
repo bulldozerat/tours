@@ -19,7 +19,7 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Allow 100 request for IP per 1h
+// Allow 100 request for IP per 1h test
 const limiter = rateLimit({
   max: 100,
   windowMs: 60 * 60 * 1000,
